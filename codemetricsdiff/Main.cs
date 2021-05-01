@@ -1,13 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.IO;
 using System.Windows.Forms;
-using System.Xml;
 
 namespace codemetricsdiff
 {
@@ -25,7 +20,7 @@ namespace codemetricsdiff
             foreach(string s in System.IO.Directory.GetFiles(
                 Properties.Settings.Default.metrics_output_path, "*.xml", System.IO.SearchOption.AllDirectories))
             {
-                lstXmllst.Add(System.IO.Path.GetFileName(s));
+                lstXmllst.Add(Path.GetFileName(s));
             }
             lstXmllst.Sort((a, b) => b.CompareTo(a));
             lstXML.Items.AddRange(lstXmllst.ToArray());
@@ -67,29 +62,70 @@ namespace codemetricsdiff
                 fromXmlFile = toXmlFile;
                 toXmlFile = temp;
             }
+            DataTable dt1 = LoadXmlToDataTable(fromXmlFile);
+            DataTable dt2 = LoadXmlToDataTable(toXmlFile);
+            DataTable dt = new DataTable("data");
+            dt.Columns.Add("FileName", typeof(string));
+            dt.Columns.Add("MethodName", typeof(string));
+            dt.Columns.Add("CyclomaticComplexity1", typeof(int));
+            dt.Columns.Add("CyclomaticComplexity2", typeof(int));
+            dt.Columns.Add("ExecutableLines1", typeof(int));
+            dt.Columns.Add("ExecutableLines2", typeof(int));
+            dt.PrimaryKey = new DataColumn[] { dt.Columns[0], dt.Columns[1] };
+            
+            foreach(DataRow dr1 in dt1.Rows)
+            {
+                DataRow dr2 = dt2.Rows.Find(new object[] { dr1["FileName"], dr1["MethodName"] });
+                if (dr2 != null)
+                {
+                    //fromにもtoにもあるものについて行追加していく
+
+                }
+                else
+                {
+                    //fromにだけあるもの
+                }
+            }
+
+
+
+            dgv.DataSource = dt1;
+            dgv.Columns[0].HeaderText = "ファイル名";
+            dgv.Columns[1].HeaderText = "メソッド名";
+            dgv.Columns[2].HeaderText = "循環的複雑度";
+            dgv.Columns[3].HeaderText = "ステップ数";
+
+            return;
+            dgv.Columns[0].HeaderText = "ファイル名";
+            dgv.Columns[1].HeaderText = "メソッド名";
+            dgv.Columns[2].HeaderText = "循環的複雑度1";
+            dgv.Columns[3].HeaderText = "循環的複雑度2";
+            dgv.Columns[4].HeaderText = "ステップ数1";
+            dgv.Columns[5].HeaderText = "ステップ数2";
+        }
+
+        protected virtual DataTable LoadXmlToDataTable(string fromXmlFile)
+        {
             DataTable dt = new DataTable("fromdata");
             dt.Columns.Add("FileName", typeof(string));
-            dt.Columns["FileName"].Caption = "ファイル名";
             dt.Columns.Add("MethodName", typeof(string));
-            dt.Columns["MethodName"].Caption = "メソッド名";
             dt.Columns.Add("CyclomaticComplexity", typeof(int));
-            dt.Columns["CyclomaticComplexity"].Caption = "循環的複雑度";
             dt.Columns.Add("ExecutableLines", typeof(int));
-            dt.Columns["ExecutableLines"].Caption = "ステップ数";
+            dt.PrimaryKey = new DataColumn[] { dt.Columns[0], dt.Columns[1] };
 
             //XmlSerializerオブジェクトを作成
             System.Xml.Serialization.XmlSerializer serializer =
                 new System.Xml.Serialization.XmlSerializer(typeof(xmlMetrics.CodeMetricsReport));
             //読み込むファイルを開く
             System.IO.StreamReader sr = new System.IO.StreamReader(
-                Properties.Settings.Default.metrics_output_path + "\\" + fromXmlFile, 
+                Properties.Settings.Default.metrics_output_path + "\\" + fromXmlFile,
                 new System.Text.UTF8Encoding(false));
             //XMLファイルから読み込み、逆シリアル化する
-            xmlMetrics.CodeMetricsReport crt = 
+            xmlMetrics.CodeMetricsReport crt =
                 (xmlMetrics.CodeMetricsReport)serializer.Deserialize(sr);
-            foreach(var n in crt.Targets.Target.Assembly.Namespaces)
+            foreach (var n in crt.Targets.Target.Assembly.Namespaces)
             {
-                foreach(var t in n.Types)
+                foreach (var t in n.Types)
                 {
                     if (t.Members is null)
                     {
@@ -102,7 +138,7 @@ namespace codemetricsdiff
                             xmlMetrics.CodeMetricsReportTargetsTargetAssemblyNamespaceNamedTypeMembersMethod x
                                 = (xmlMetrics.CodeMetricsReportTargetsTargetAssemblyNamespaceNamedTypeMembersMethod)mem;
                             DataRow drNew = dt.NewRow();
-                            drNew["FileName"] = x.File;
+                            drNew["FileName"] = Path.GetFileName(x.File);
                             drNew["MethodName"] = x.Name;
                             drNew["CyclomaticComplexity"] = GetMatricsValue(x.Metrics, "CyclomaticComplexity");
                             drNew["ExecutableLines"] = GetMatricsValue(x.Metrics, "ExecutableLines");
@@ -111,8 +147,8 @@ namespace codemetricsdiff
                     }
                 }
             }
-            dgv.DataSource = dt;
-            dgv.Columns[0].HeaderText = "ファイル名";
+
+            return dt;
         }
 
         protected virtual int GetMatricsValue(xmlMetrics.CodeMetricsReportTargetsTargetAssemblyNamespaceNamedTypeMembersMethodMetric[] xs 
