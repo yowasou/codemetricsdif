@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Windows.Forms;
+using System.Xml.Serialization;
 
 namespace codemetricsdiff
 {
@@ -113,16 +114,14 @@ namespace codemetricsdiff
             dt.Columns.Add("ExecutableLines", typeof(int));
             dt.PrimaryKey = new DataColumn[] { dt.Columns[0], dt.Columns[1] };
 
-            //XmlSerializerオブジェクトを作成
-            System.Xml.Serialization.XmlSerializer serializer =
-                new System.Xml.Serialization.XmlSerializer(typeof(xmlMetrics.CodeMetricsReport));
-            //読み込むファイルを開く
-            System.IO.StreamReader sr = new System.IO.StreamReader(
+            XmlSerializer serializer =
+                new XmlSerializer(typeof(xmlMetrics.CodeMetricsReport));
+            StreamReader sr = new StreamReader(
                 Properties.Settings.Default.metrics_output_path + "\\" + fromXmlFile,
                 new System.Text.UTF8Encoding(false));
-            //XMLファイルから読み込み、逆シリアル化する
             xmlMetrics.CodeMetricsReport crt =
                 (xmlMetrics.CodeMetricsReport)serializer.Deserialize(sr);
+
             foreach (var n in crt.Targets.Target.Assembly.Namespaces)
             {
                 foreach (var t in n.Types)
